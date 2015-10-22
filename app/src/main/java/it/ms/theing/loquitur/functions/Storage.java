@@ -165,7 +165,7 @@ public class Storage extends SQLiteOpenHelper implements LoquiturModules {
 
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
-        sqLiteDatabase.execSQL("create table if not exists alias ( genre text not null , key text not null , value text not null )");
+        sqLiteDatabase.execSQL("create table if not exists alias ( genre text not null , key text not null , value text not null ,UNIQUE (genre, key) ON CONFLICT REPLACE)");
         sqLiteDatabase.execSQL("create index if not exists alias_key on alias ( key )");
         sqLiteDatabase.execSQL("create index if not exists alias_genre on alias ( genre )");
     }

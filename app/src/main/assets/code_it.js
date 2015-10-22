@@ -21,10 +21,14 @@
 
 */
 
+// Call
 
-// This is a demo sentence
-Brain.sentence('@ chi#verb sei tu')
-Brain.sentence('@ chi#verb sei')
+Brain.sentence('@ richiama#action');
+Brain.sentence('@ chiama#action $people');
+Brain.sentence('@ componi#action $number');
+
+
+
 
 
 // ****** Utils ******
@@ -39,9 +43,11 @@ function vectToString( vec ) {
     return res;
 }
 
+
+var faces = { happy:'im1.png', sorry:'im4.png', smile:'im3.png',think:'im2.png'};
 function setImage( e ) {
   var img = document.getElementById ("image");
-  img.src = e;
+  img.src = faces[e];
 }
 
 
@@ -63,6 +69,7 @@ function runAndExit() {
 
 document.write('<center><img id="image" src="im3.png" width="80%" height="auto"/></center>');
 
+
 Talk.listen('waiting_query()');
 
 
@@ -73,29 +80,85 @@ function waiting_query() {
   var p=Brain.process(result);
   parsed=JSON.parse(p);
 
-  setImage('im2.png');
+  setImage('think');
 
 
   if (parsed.goal) {
 
-    verb=parsed.args.VERB;
+    var action=parsed.args.ACTION;
 
-    if (['chi'].indexOf(verb)>-1) {
-        action_who();
+    if (['chiama'].indexOf(action)>-1) {
+        action_call();
+        return;
+    }
+    if (['richiama'].indexOf(action)>-1) {
+        action_redial();
+        return;
+    }
+    if (['componi'].indexOf(action)>-1) {
+        action_dial();
         return;
     }
 
   }
 
-  setImage('im4.png');
+  setImage('sorry');
   Talk.say('Comando sconosciuto','exit()');
 
 }
 
 
-
-function action_who() {
-    setImage('im1.png');
-    Talk.say('Sono Loquitur, la tua interfaccia per comandi vocali','exit()');
+function action_dial() {
+  try {
+    number=vectToString(parsed.args.NUMBER).replace('più','+').replace(/ /g,'');
+    var s="";
+    for(var i=0;i<number.length;++i) {
+      if ( ! ( ( (number[i]=='+') && (i==0) ) || ((number[i]>='0') && (number[i]<='9')) )) throw "numero errato";
+      s+=' '+number[i];
+    }
+    if (number=='') throw "numero non specificato";
+    Intent.create('android.intent.action.CALL');
+    Intent.data('tel:',number)
+  } catch( err ) {
+    setImage('sorry');
+    Talk.say(err,'exit()');
+    return;
+  }
+  setImage('happy');
+  Talk.say('chiamo '+s,'runAndExit()');
 }
 
+
+
+function action_call() {
+  try {
+    var person=vectToString(parsed.args.PEOPLE);
+    var matching=PhoneDir.match(person,0.5);
+    if (matching=="") throw "non in rubrica";
+    var number=JSON.parse(matching).phone;
+    if (number=="") throw "numero non associato";
+    Intent.create('android.intent.action.CALL');
+    Intent.data('tel:',number)
+  } catch (err)  {
+    setImage('sorry');
+    Talk.say(err,'exit()');
+    return;
+  }
+  setImage('happy');
+  Talk.say('chiamo '+person,'runAndExit()');
+}
+
+function action_redial() {
+  try {
+    var number= PhoneDir.getLastCalledNumber();
+    if (number=="") throw "nessun numero da richiamare";
+    Intent.create('android.intent.action.CALL');
+    Intent.data('tel:',number)
+  } catch (err)  {
+    setImage('sorry');
+    Talk.say(err,'exit()');
+    return;
+  }
+  setImage('happy');
+  Talk.say('richiamo ultimo numero','runAndExit()');
+}

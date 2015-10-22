@@ -47,11 +47,11 @@ import it.ms.theing.loquitur.Loquitur;
 public class Talk implements LoquiturModules {
 
     private final Loquitur context;
-    private final TextToSpeech tts;
     private final HashMap<String, String> hashRender = new HashMap<String, String>();
     private String talkCallback="";
     private String speechResult="";
-    private SpeechRecognizer speech;
+    private SpeechRecognizer speech=null;
+    private TextToSpeech tts=null;
     private String recognizerCallback="";
     private Handler thisthread=new Handler();
     private boolean notified=false;
@@ -102,11 +102,15 @@ public class Talk implements LoquiturModules {
      */
 
     public void destroy() {
-        tts.stop();
-        tts.shutdown();
-        speech.stopListening();
-        speech.cancel();
-        speech.destroy();
+        if (tts!=null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        if (speech!=null) {
+            speech.stopListening();
+            speech.cancel();
+            speech.destroy();
+        }
     }
 
     /**
@@ -201,7 +205,7 @@ public class Talk implements LoquiturModules {
                     return;
             }
             notified=true;
-            ((Loquitur) context).executeCallback(recognizerCallback);
+            context.executeCallback(recognizerCallback);
 
         }
         public void onResults(Bundle results)

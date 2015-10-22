@@ -37,6 +37,7 @@ import java.util.Stack;
 import it.ms.theing.loquitur.functions.Brain;
 import it.ms.theing.loquitur.functions.IntentInterface;
 import it.ms.theing.loquitur.functions.LoquiturModules;
+import it.ms.theing.loquitur.functions.PhoneDir;
 import it.ms.theing.loquitur.functions.Storage;
 import it.ms.theing.loquitur.functions.Talk;
 
@@ -91,6 +92,7 @@ public class Loquitur extends AppCompatActivity {
         addModule(new Talk(this));
         // Modules
         addModule(new IntentInterface(this));
+        addModule(new PhoneDir(this));
     }
 
 
@@ -131,9 +133,6 @@ public class Loquitur extends AppCompatActivity {
         webView.loadDataWithBaseURL("file:///android_asset/index.html",stubPage,"text/html","UTF-8",null);
 
     }
-
-
-    private static String convertToJavascript;
 
 
     @Override
