@@ -27,7 +27,13 @@ Brain.sentence('@ richiama#action');
 Brain.sentence('@ chiama#action $people');
 Brain.sentence('@ componi#action $number');
 
+// Navigation
 
+Brain.sentence('@ navigazione#action PLACE');
+Brain.sentence('@ guidami#action PLACE');
+Brain.sentence('@ vai#action PLACE');
+Brain.sentence('@ portami#action PLACE');
+Brain.sentence('PLACE ... ^in|al|a|alla|alle|agli|verso|sulla|su|sul|nel|nella|nell|all ~ ^il|lo|la|i|gli|le|l $place');
 
 
 
@@ -91,12 +97,16 @@ function waiting_query() {
         action_call();
         return;
     }
-    if (['richiama'].indexOf(action)>-1) {
+    else if (['richiama'].indexOf(action)>-1) {
         action_redial();
         return;
     }
-    if (['componi'].indexOf(action)>-1) {
+    else if (['componi'].indexOf(action)>-1) {
         action_dial();
+        return;
+    }
+    else if (['navigazione','guidami','vai','portami'].indexOf(action)>-1) {
+        action_navigation();
         return;
     }
 
@@ -162,3 +172,21 @@ function action_redial() {
   setImage('happy');
   Talk.say('richiamo ultimo numero','runAndExit()');
 }
+
+function action_navigation() {
+
+  try {
+    var place=parsed.args.PLACE.PLACE;
+    var togo=vectToString(place);
+    if (togo=='') throw "destinazione non definita";
+  } catch (err ) {
+      setImage('sorry');
+      Talk.say(err,'exit()');
+      return;
+  }
+  setImage('happy');
+  Intent.create('android.intent.action.VIEW');
+  Intent.data("google.navigation:q=",togo);
+  Talk.say('navigazione verso'+togo,'runAndExit()');
+}
+

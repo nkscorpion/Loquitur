@@ -25,6 +25,14 @@ Brain.sentence('@ redial#action');
 Brain.sentence('@ call#action $people');
 Brain.sentence('@ dial#action $number');
 
+// Navigation
+
+Brain.sentence('@ navigation#action PLACE');
+Brain.sentence('@ drive#action me PLACE');
+Brain.sentence('@ go#action PLACE');
+Brain.sentence('@ bring#action me PLACE');
+Brain.sentence('PLACE ... ^to|at|on|over|under|in|towards ~ the $place');
+
 
 
 
@@ -88,15 +96,18 @@ function waiting_query() {
         action_call();
         return;
     }
-    if (['redial'].indexOf(action)>-1) {
+    else if (['redial'].indexOf(action)>-1) {
         action_redial();
         return;
     }
-    if (['dial'].indexOf(action)>-1) {
+    else if (['dial'].indexOf(action)>-1) {
         action_dial();
         return;
     }
-
+    else if (['navigation','drive','go','bring'].indexOf(action)>-1) {
+        action_navigation();
+        return;
+    }
   }
 
   setImage('sorry');
@@ -161,3 +172,22 @@ function action_redial() {
   setImage('happy');
   Talk.say('I\'m dialing the last number','runAndExit()');
 }
+
+
+function action_navigation() {
+
+  try {
+    var place=parsed.args.PLACE.PLACE;
+    var togo=vectToString(place);
+    if (togo=='') throw "undefined destination";
+  } catch (err ) {
+      setImage('sorry');
+      Talk.say(err,'exit()');
+      return;
+  }
+  setImage('happy');
+  Intent.create('android.intent.action.VIEW');
+  Intent.data("google.navigation:q=",togo);
+  Talk.say('navigation to '+togo,'runAndExit()');
+}
+
