@@ -200,6 +200,8 @@ public class Brain implements LoquiturModules {
 		@Override
 		public boolean match(Vector<Member> content, int sequence,Stack<Result> results) {
 
+			if (index>=tokens.length) return false;
+
 
 			if (cache==null) {
 				cache=storage.loadCache(name);
@@ -215,12 +217,9 @@ public class Brain implements LoquiturModules {
 					result(results);
 					return true;
 				};
-				if (index<tokens.length)
-				{
-					if (content.get(sequence).match(content,sequence,results)) {
-						result(results);
-						return true;
-					}
+				if (content.get(sequence).match(content,sequence,results)) {
+					result(results);
+					return true;
 				}
 			}
 
@@ -266,6 +265,7 @@ public class Brain implements LoquiturModules {
 		
 		@Override
 		public boolean match(Vector<Member> content, int sequence,Stack<Result> results) {
+			if (index>=tokens.length) return false;
 
 			// Check if the sequence is solved			
 			int id=index;			
@@ -277,14 +277,11 @@ public class Brain implements LoquiturModules {
 					result(tokens[id],results);
 					return true;
 				};
-				if (index<tokens.length) 
-				{
-					if (content.get(sequence).match(content,sequence,results)) {
-						result(tokens[id],results);
-						return true;		
-					}
+				if (content.get(sequence).match(content,sequence,results)) {
+					result(tokens[id],results);
+					return true;
 				}
-			}			
+			}
 			
 			// Sorry this definitely does not match
 			index=id;
@@ -333,9 +330,9 @@ public class Brain implements LoquiturModules {
 
 		@Override
 		public boolean match(Vector<Member> content, int sequence,Stack<Result> results) {
+			if (index>=tokens.length) return false;
 			// Check if the sequence is solved			
-			int id=index;			
-									
+			int id=index;
 			if (matching()) {
 				// Try to match the next
 				// Check if sequence is finished
@@ -343,14 +340,11 @@ public class Brain implements LoquiturModules {
 					result(results);
 					return true;
 				};
-				if (index<tokens.length) 
-				{
-					if (content.get(sequence).match(content,sequence,results)) {
-						result(results);
-						return true;		
-					}
+				if (content.get(sequence).match(content,sequence,results)) {
+					result(results);
+					return true;
 				}
-			}			
+			}
 			
 			// Sorry this definitely does not match
 			index=id;
@@ -378,14 +372,14 @@ public class Brain implements LoquiturModules {
 			
 			// If not finished check if it does NOT match
 
-			while(index<tokens.length) {
+			do {
 				if (content.get(sequence).match(content,sequence,results)) {
 					// Hey this match ... you can write here your data handler
 					return true;		
 				}
 				// The garbage algorithm increments the index until the matching
 				++index;
-			}
+			} while(index<tokens.length);
 			
 			// Sorry this definitely does not match
 			index=id;
@@ -401,14 +395,15 @@ public class Brain implements LoquiturModules {
 
 		@Override
 		public boolean match(Vector<Member> content, int sequence,Stack<Result> results) {
-			// Check if the sequence is solved			
-			int id=index;			
-			
+
+			// Check if the sequence is solved
+			int id=index;
+
 			// Check if the sequence is finished
 			if (++sequence>=content.size()) {				
 				return true;
 			};
-			
+
 			if (content.get(sequence).match(content,sequence,results)) {
 				// Hey this match ... you can write here your data handler
 				return true;		
@@ -420,8 +415,9 @@ public class Brain implements LoquiturModules {
 			if (++sequence>=content.size()) {
 				return true;
 			};
-			
-			
+
+
+
 			if (content.get(sequence).match(content,sequence,results)) {
 				// Hey this match ... you can write here your data handler
 				return true;		
@@ -515,7 +511,6 @@ public class Brain implements LoquiturModules {
 						result(results);
 						return true;					
 					}
-					if (index>=tokens.length) continue;
 					if ( content.get(sequence).match(content, sequence,results) ) {
 						result(results);						
 						return true;
