@@ -35,6 +35,23 @@ Brain.sentence('@ vai#action PLACE');
 Brain.sentence('@ portami#action PLACE');
 Brain.sentence('PLACE ... ^in|al|a|alla|alle|agli|verso|sulla|su|sul|nel|nella|nell|all ~ ^il|lo|la|i|gli|le|l $place');
 
+// Hour
+
+Brain.sentence('HOUR ^alla|alle ~ ore ^(\\d+)\\:(\\d+)#hourmin');
+Brain.sentence('HOUR ^tra|fra ^\\d+|un#hourplus ^ora|ore ~ e ^\\d+|un#minuteplus ^minuti|minuto');
+Brain.sentence('HOUR ^tra|fra ^\\d+|un#hourplus ^ora|ore');
+Brain.sentence('HOUR ^tra|fra ^\\d+|un#minuteplus ^minuti|minuto');
+
+// Wake up
+
+Brain.sentence('@ sveglia#action HOUR');
+Brain.sentence('@ svegliami#action HOUR');
+Brain.sentence('@ avvisami#action HOUR');
+Brain.sentence('@ cancella#action ... ^allarme|allarmi|sveglia|sveglie#what');
+Brain.sentence('@ rimuovi#action ... ^allarme|allarmi|sveglia|sveglie#what');
+Brain.sentence('@ modifica#action ... ^allarme|allarmi|sveglia|sveglie#what');
+
+
 
 
 // ****** Utils ******
@@ -108,6 +125,18 @@ function waiting_query() {
     else if (['navigazione','guidami','vai','portami'].indexOf(action)>-1) {
         action_navigation();
         return;
+    }
+    else if (['sveglia','svegliami','avvisami'].indexOf(action)>-1) {
+        action_wakeup();
+        return;
+    }
+   else if (['cancella','rimuovi'].indexOf(action)>-1) {
+              action_delete();
+              return;
+      }
+   else if (['modifica'].indexOf(action)>-1) {
+            action_modify();
+            return;
     }
 
   }
@@ -190,3 +219,95 @@ function action_navigation() {
   Talk.say('navigazione verso'+togo,'runAndExit()');
 }
 
+
+
+function getTime( time ) {
+    var hours=time.HOURMIN;
+    if (hours===undefined) {
+    // Calculate form
+      var date=new Date();
+      var sec=date.getTime();
+
+      var h1 = time.HOURPLUS;
+      if (!(h1===undefined)) {
+        if (h1 == 'un' ) {
+          h1=1;
+        } else {
+          h1=parseInt(h1);
+        }
+        sec+=h1*3600000;
+      }
+
+      var h2 = time.MINUTEPLUS;
+        if (!(h2===undefined)) {
+          if (h2 == 'un' ) {
+            h2=1;
+          } else {
+            h2=parseInt(h2);
+          }
+          sec+=h2*60000;
+        }
+
+
+      date.setTime(sec);
+
+      hr=date.getHours();
+      min=date.getMinutes();
+
+
+    } else {
+      // Direct form
+      hr=parseInt(hours[1]);
+      min=parseInt(hours[2]);
+    }
+
+    return [ hr , min] ;
+
+}
+
+
+
+
+
+function action_wakeup() {
+
+    dv=getTime(parsed.args.HOUR);
+    hr=dv[0];
+    min=dv[1];
+
+    setImage('happy');
+    Intent.create('android.intent.action.SET_ALARM');
+    Intent.addInt('android.intent.extra.alarm.HOUR',hr);
+    Intent.addInt('android.intent.extra.alarm.MINUTES',min);
+    Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',true);
+    Intent.run();
+
+
+
+    Talk.say('sveglia impostata per le ore '+hr+' e '+min,'exit()');
+
+}
+
+
+
+function action_delete() {
+    if (['allarme','allarmi','sveglia','sveglie'].indexOf(parsed.args.WHAT[0])>-1) {
+      setImage('happy');
+      Intent.create('android.intent.action.SET_ALARM');
+      Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',false);
+      Talk.say('rimuovere sveglie manualmente','runAndExit()');
+    }
+
+}
+
+
+function action_modify() {
+    if (['allarme','allarmi','sveglia','sveglie'].indexOf(parsed.args.WHAT[0])>-1) {
+      setImage('happy');
+      Intent.create('android.intent.action.SET_ALARM');
+      Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',false);
+      Talk.say('modificare sveglie manualmente','runAndExit()');
+    }
+
+
+}
