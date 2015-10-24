@@ -52,6 +52,21 @@ Brain.sentence('@ rimuovi#action ... ^allarme|allarmi|sveglia|sveglie#what');
 Brain.sentence('@ modifica#action ... ^allarme|allarmi|sveglia|sveglie#what');
 
 
+// Voice search on Internet
+
+Brain.sentence('@ ricerca#action');
+Brain.sentence('@ cerca#action');
+Brain.sentence('@ internet#action');
+
+
+// Run
+
+Brain.sentence('@ avvia#action $what');
+Brain.sentence('@ lancia#action $what');
+Brain.sentence('@ apri#action $what');
+
+
+
 
 
 // ****** Utils ******
@@ -100,10 +115,9 @@ function waiting_query() {
 
 
   var result=Talk.getSentence();
+  setImage('think');
   var p=Brain.process(result);
   parsed=JSON.parse(p);
-
-  setImage('think');
 
 
   if (parsed.goal) {
@@ -138,6 +152,15 @@ function waiting_query() {
             action_modify();
             return;
     }
+   else if (['avvia','lancia','apri'].indexOf(action)>-1) {
+           action_application();
+           return;
+   }
+   else if (['cerca','ricerca','internet'].indexOf(action)>-1) {
+           action_internet();
+           return;
+   }
+
 
   }
 
@@ -308,6 +331,26 @@ function action_modify() {
       Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',false);
       Talk.say('modificare sveglie manualmente','runAndExit()');
     }
+}
 
 
+function action_internet() {
+    setImage('happy');
+    Intent.create('android.speech.action.WEB_SEARCH');
+    Intent.run();
+    Intent.finish();
+}
+
+function action_application() {
+    var what=vectToString(parsed.args.WHAT);
+    var curr=Intent.matchApp(what,0.5);
+    if (curr == "") {
+      setImage('sorry');
+      Talk.say('nessuna applicazione trovata','exit()');
+    } else {
+      var current=JSON.parse(curr);
+      setImage('happy');
+      Intent.launchFromName(current.package);
+      Talk.say('avvio '+current.name,'runAndExit()');
+    }
 }

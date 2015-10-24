@@ -55,6 +55,20 @@ Brain.sentence('@ remove#action ... ^alarm|alarms#what');
 Brain.sentence('@ modify#action ... ^alarm|alarms#what');
 
 
+// Voice search on Internet
+
+Brain.sentence('@ search#action');
+Brain.sentence('@ internet#action');
+
+
+// Run
+
+Brain.sentence('@ start#action $what');
+Brain.sentence('@ run#action $what');
+
+
+
+
 // ****** Utils ******
 
 function vectToString( vec ) {
@@ -101,11 +115,10 @@ function waiting_query() {
 
 
   var result=Talk.getSentence();
+  setImage('think');
   var p=Brain.process(result);
   parsed=JSON.parse(p);
-  //document.write(result+" -> "+p);
 
-  setImage('think');
 
 
   if (parsed.goal) {
@@ -138,6 +151,14 @@ function waiting_query() {
     }
    else if (['modify'].indexOf(action)>-1) {
             action_modify();
+            return;
+    }
+   else if (['start','run'].indexOf(action)>-1) {
+            action_application();
+            return;
+    }
+   else if (['search','internet'].indexOf(action)>-1) {
+            action_internet();
             return;
     }
   }
@@ -361,6 +382,26 @@ function action_modify() {
       Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',false);
       Talk.say('please modify alarms manually','runAndExit()');
     }
+}
+
+function action_internet() {
+    setImage('happy');
+    Intent.create('android.speech.action.WEB_SEARCH');
+    Intent.run();
+    Intent.finish();
+}
 
 
+function action_application() {
+    var what=vectToString(parsed.args.WHAT);
+    var curr=Intent.matchApp(what,0.5);
+    if (curr == "") {
+      setImage('sorry');
+      Talk.say('no applications found','exit()');
+    } else {
+      var current=JSON.parse(curr);
+      setImage('happy');
+      Intent.launchFromName(current.package);
+      Talk.say('running '+current.name,'runAndExit()');
+    }
 }
