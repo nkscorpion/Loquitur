@@ -136,7 +136,8 @@ public class Brain implements LoquiturModules {
 			}
 		}
 	}
-	
+
+
 
 	// A member is something that matches. If the match is positive it add the results
 	
@@ -156,6 +157,7 @@ public class Brain implements LoquiturModules {
 
 		private String name;
 		private String alias;
+		private String[] token;
 
 		private Vector<Pair<String[],String>> cache;
 
@@ -182,6 +184,7 @@ public class Brain implements LoquiturModules {
 				if (b) {
 					index += item.first.length;
 					alias=item.second;
+					token=item.first;
 					return true;
 				}
 
@@ -191,10 +194,21 @@ public class Brain implements LoquiturModules {
 
 
 		private void result(Stack<Result> results) {
+			SubResult subr=new SubResult();
+			subr.value=new Stack<Result>();
+			MultipleResult mult=new MultipleResult();
+			mult.key="key";
+			mult.value=new Vector<String>();
+			for (String a : token) {
+				mult.value.add(a);
+			}
+			subr.value.push(mult);
 			SingleResult sr=new SingleResult();
-			sr.key=name;
+			sr.key="value";
 			sr.value=alias;
-			results.push(sr);
+			subr.value.push(sr);
+			subr.key=name;
+			results.push(subr);
 		}
 
 		@Override
