@@ -31,8 +31,10 @@ Brain.sentence('@ navigation#action PLACE');
 Brain.sentence('@ drive#action me PLACE');
 Brain.sentence('@ go#action PLACE');
 Brain.sentence('@ bring#action me PLACE');
-Brain.sentence('PLACE ... ^to|at|on|over|under|in|towards ~ the $place');
-
+Brain.sentence('PLACE ... ^to|at|on|over|under|in|towards ~ the PLACEATOM');
+Brain.sentence('PLACEATOM .place');
+Brain.sentence('PLACEATOM $place');
+Brain.sentence('PLACE PLACEATOM');
 // Hour
 
 Brain.sentence('HOUR ~ a ^\\d+|quarter|half#minute ^after|past#mid ^\\d+#hour ~ ^pm|am|p\\.m\\.|a\\.m\\.#ampm');
@@ -242,20 +244,25 @@ function action_redial() {
 
 
 function action_navigation() {
-
-  try {
-    var place=parsed.args.PLACE.PLACE;
-    var togo=vectToString(place);
-    if (togo=='') throw "undefined destination";
-  } catch (err ) {
-      setImage('sorry');
-      Talk.say(err,'exit()');
-      return;
-  }
-  setImage('happy');
-  Intent.create('android.intent.action.VIEW');
-  Intent.data("google.navigation:q=",togo);
-  Talk.say('navigation to '+togo,'runAndExit()');
+    try {
+      var place=parsed.args.PLACE.PLACEATOM.PLACE;
+      if (place.length==0) throw "undefined destination";
+      if (place.key) {
+        var togo=place.value;
+        var descr=vectToString(place.key);
+      } else {
+        var togo=vectToString(place);
+        var descr=togo;
+      }
+    } catch (err ) {
+        setImage('sorry');
+        Talk.say(err,'exit()');
+        return;
+    }
+    setImage('happy');
+    Intent.create('android.intent.action.VIEW');
+    Intent.data("google.navigation:q=",togo);
+    Talk.say('navigation to'+descr,'runAndExit()');
 }
 
 
@@ -460,7 +467,7 @@ function action_where_callback(lat,lon,alt) {
     if (place[4]!='') s+=" "+place[4];
 
     if (alt>=500) { //Significative altitude
-      s+=" . at "+parseInt(alt)+" meters";
+      s+=" . altitude "+parseInt(alt*3.281)+" feet";
       return;
     }
 

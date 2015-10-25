@@ -406,7 +406,7 @@ function action_where_callback(lat,lon,alt) {
     if (place[4]!='') s+=" "+place[4];
 
     if (alt>=500) { //Significative altitude
-      s+=" . A "+parseInt(alt)+" metri";
+      s+=" . Altitudine "+parseInt(alt)+" metri";
       return;
     }
 
