@@ -66,6 +66,12 @@ Brain.sentence('@ internet#action');
 Brain.sentence('@ start#action $what');
 Brain.sentence('@ run#action $what');
 
+// Save
+Brain.sentence('@ save#action ... ^place|position as $what');
+Brain.sentence('@ set#action ... ^place|position as $what');
+
+// Where are we
+Brain.sentence('@ where#action ... ^we|i');
 
 
 
@@ -160,6 +166,14 @@ function waiting_query() {
    else if (['search','internet'].indexOf(action)>-1) {
             action_internet();
             return;
+    }
+   else if (['save','set'].indexOf(action)>-1) {
+              action_location('action_saveplace_callback');
+              return;
+    }
+   else if (['where'].indexOf(action)>-1) {
+          action_location('action_where_callback');
+          return;
     }
   }
 
@@ -404,4 +418,52 @@ function action_application() {
       Intent.launchFromName(current.package);
       Talk.say('running '+current.name,'runAndExit()');
     }
+}
+
+
+function action_location(arg) {
+    Location.currentLocation(arg);
+}
+
+function action_saveplace_callback(lat,lon,alt) {
+    var what=vectToString(parsed.args.WHAT);
+    if (what=='') {
+      Talk.say("I did'n understand the name","exit()");
+      return;
+     }
+    if (lat>500) {
+      Talk.say("I cannot find the coordinates","exit()");
+      return;
+    }
+    Storage.setKey('place',what,''+lat+','+lon);
+    Talk.say("Position "+what+" saved","exit()");
+    return;
+}
+
+function action_where_callback(lat,lon,alt) {
+
+    if (lat>500) {
+      Talk.say("I cannot find the coordinates","exit()");
+      return;
+    }
+
+    place=JSON.parse(Location.geoCoder(lat,lon));
+    if (place=='') {
+      Talk.say("I cannot detect the place","exit()");
+      return;
+    }
+    var s="";
+    if (place[0]!='') s+="we are at "+place[0];
+    if (place[1]!='') s+=", in "+place[1];
+    if (place[2]!='') s+=", town "+place[2];
+    if (place[3]!='') s+=" in "+place[3];
+    if (place[4]!='') s+=" "+place[4];
+
+    if (alt>=500) { //Significative altitude
+      s+=" . at "+parseInt(alt)+" meters";
+      return;
+    }
+
+    Talk.say(s,"exit()");
+    return;
 }

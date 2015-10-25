@@ -33,8 +33,9 @@ Brain.sentence('@ navigazione#action PLACE');
 Brain.sentence('@ guidami#action PLACE');
 Brain.sentence('@ vai#action PLACE');
 Brain.sentence('@ portami#action PLACE');
-Brain.sentence('PLACE ... ^in|al|a|alla|alle|agli|verso|sulla|su|sul|nel|nella|nell|all ~ ^il|lo|la|i|gli|le|l $place');
-
+Brain.sentence('PLACE ... ^in|al|a|alla|alle|agli|verso|sulla|su|sul|nel|nella|nell|all ~ ^il|lo|la|i|gli|le|l PLACEATOM');
+Brain.sentence('PLACEATOM .place');
+Brain.sentence('PLACEATOM $place');
 // Hour
 
 Brain.sentence('HOUR ^alla|alle ~ ore ^(\\d+)\\:(\\d+)#hourmin');
@@ -65,8 +66,11 @@ Brain.sentence('@ avvia#action $what');
 Brain.sentence('@ lancia#action $what');
 Brain.sentence('@ apri#action $what');
 
+// Save
+Brain.sentence('@ salva#action ... ^posto|posizione come $what');
 
-
+// Where are we
+Brain.sentence('@ dove#action ^siamo|sono');
 
 
 // ****** Utils ******
@@ -109,7 +113,6 @@ document.write('<center><img id="image" src="im3.png" width="80%" height="auto"/
 
 
 Talk.listen('waiting_query()');
-
 
 function waiting_query() {
 
@@ -160,8 +163,14 @@ function waiting_query() {
            action_internet();
            return;
    }
-
-
+   else if (['salva'].indexOf(action)>-1) {
+           action_location('action_saveplace_callback');
+           return;
+   }
+   else if (['dove'].indexOf(action)>-1) {
+           action_location('action_where_callback');
+           return;
+   }
   }
 
   setImage('sorry');
@@ -226,11 +235,16 @@ function action_redial() {
 }
 
 function action_navigation() {
-
   try {
-    var place=parsed.args.PLACE.PLACE;
-    var togo=vectToString(place);
-    if (togo=='') throw "destinazione non definita";
+    var place=parsed.args.PLACE.PLACEATOM.PLACE;
+    if (place.length==0) throw "destinazione non definita";
+    if (place.key) {
+      var togo=place.value;
+      var descr=vectToString(place.key);
+    } else {
+      var togo=vectToString(place);
+      var descr=togo;
+    }
   } catch (err ) {
       setImage('sorry');
       Talk.say(err,'exit()');
@@ -239,7 +253,7 @@ function action_navigation() {
   setImage('happy');
   Intent.create('android.intent.action.VIEW');
   Intent.data("google.navigation:q=",togo);
-  Talk.say('navigazione verso'+togo,'runAndExit()');
+  Talk.say('navigazione verso'+descr,'runAndExit()');
 }
 
 
@@ -305,8 +319,6 @@ function action_wakeup() {
     Intent.addBoolean('android.intent.extra.alarm.SKIP_UI',true);
     Intent.run();
 
-
-
     Talk.say('sveglia impostata per le ore '+hr+' e '+min,'exit()');
 
 }
@@ -353,4 +365,51 @@ function action_application() {
       Intent.launchFromName(current.package);
       Talk.say('avvio '+current.name,'runAndExit()');
     }
+}
+
+
+function action_location(arg) {
+    Location.currentLocation(arg);
+}
+
+function action_saveplace_callback(lat,lon,alt) {
+    var what=vectToString(parsed.args.WHAT);
+    if (what=='') {
+      Talk.say("Non ho capito il nome","exit()");
+      return;
+     }
+    if (lat>500) {
+      Talk.say("Non riesco a trovare le coordinate","exit()");
+      return;
+    }
+    Storage.setKey('place',what,''+lat+','+lon);
+    Talk.say("Posizione "+what+" salvata","exit()");
+    return;
+}
+
+function action_where_callback(lat,lon,alt) {
+
+    if (lat>500) {
+      Talk.say("Non riesco a trovare le coordinate","exit()");
+      return;
+    }
+    place=JSON.parse(Location.geoCoder(lat,lon));
+    if (place=='') {
+      Talk.say("Non riesco a cercare il posto","exit()");
+      return;
+    }
+    var s="";
+    if (place[0]!='') s+="siamo al "+place[0];
+    if (place[1]!='') s+=", in "+place[1];
+    if (place[2]!='') s+=", città "+place[2];
+    if (place[3]!='') s+=" in "+place[3];
+    if (place[4]!='') s+=" "+place[4];
+
+    if (alt>=500) { //Significative altitude
+      s+=" . A "+parseInt(alt)+" metri";
+      return;
+    }
+
+    Talk.say(s,"exit()");
+    return;
 }
