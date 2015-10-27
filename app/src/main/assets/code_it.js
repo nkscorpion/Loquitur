@@ -36,12 +36,18 @@ Brain.sentence('@ portami#action PLACE');
 Brain.sentence('PLACE ... ^in|al|a|alla|alle|agli|verso|sulla|su|sul|nel|nella|nell|all ~ ^il|lo|la|i|gli|le|l PLACEATOM');
 Brain.sentence('PLACEATOM .place');
 Brain.sentence('PLACEATOM $place');
+
 // Hour
 
 Brain.sentence('HOUR ^alla|alle ~ ore ^(\\d+)\\:(\\d+)#hourmin');
 Brain.sentence('HOUR ^tra|fra ^\\d+|un#hourplus ^ora|ore ~ e ^\\d+|un#minuteplus ^minuti|minuto');
 Brain.sentence('HOUR ^tra|fra ^\\d+|un#hourplus ^ora|ore');
 Brain.sentence('HOUR ^tra|fra ^\\d+|un#minuteplus ^minuti|minuto');
+
+// Days
+
+Brain.sentence('DAY ^\\d+#day ~ ^gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre#month ~ ^\\d+#year');
+Brain.sentence('DAY ^domani|dopodomani|lunedì|martedi|mercoledì|giovedì|venerdì|sabato|domenica#relday');
 
 // Wake up
 
@@ -51,6 +57,14 @@ Brain.sentence('@ avvisami#action HOUR');
 Brain.sentence('@ cancella#action ... ^allarme|allarmi|sveglia|sveglie#what');
 Brain.sentence('@ rimuovi#action ... ^allarme|allarmi|sveglia|sveglie#what');
 Brain.sentence('@ modifica#action ... ^allarme|allarmi|sveglia|sveglie#what');
+
+// Calendar
+
+Brain.sentence('@ ricordami#action HOURDAY');
+Brain.sentence('@ ricorda#action HOURDAY');
+Brain.sentence('@ promemoria#action HOURDAY');
+Brain.sentence('HOURDAY ... DAY ~ HOUR ... ^che|di $what');
+Brain.sentence('HOURDAY ... DAY ~ HOUR ^che|di $what');
 
 
 // Voice search on Internet
@@ -169,6 +183,10 @@ function waiting_query() {
    }
    else if (['dove'].indexOf(action)>-1) {
            action_location('action_where_callback');
+           return;
+   }
+   else if (['ricordami','ricorda','promemoria'].indexOf(action)>-1) {
+           action_calendar();
            return;
    }
   }
@@ -412,4 +430,169 @@ function action_where_callback(lat,lon,alt) {
 
     Talk.say(s,"exit()");
     return;
+}
+
+
+
+
+var monthsVector=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+
+
+function getDate( day ) {
+
+  var date=new Date();
+
+  date.setMinutes(0);
+  date.setHours(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+
+
+  var relday=day.RELDAY;
+
+  if (!relday) {
+
+
+      // Explicit DATE
+      var dd=parseInt(day.DAY[0]) ;
+
+      if (day.MONTH === undefined) {
+        // If you do not describe the month we intend the current month or the next
+        // if the day is less or equal to today and the current year
+
+        if (dd<=date.getDate()) {
+          // Next month
+          date.setMonth(date.getMonth()+1);
+        }
+        date.setDate(dd)
+        return date;
+
+      } else {
+        var dm=monthsVector.indexOf(day.MONTH[0]);
+      }
+
+
+      if (day.YEAR === undefined) {
+         // If year is undefined we have to verify that the date is in the future
+         if ( date >= new Date(date.getFullYear(),dm,dd,0,0,0,0) ) {
+            // Ok date is in the past, refers to the next year
+            date.setFullYear(date.getFullYear()+1);
+         }
+        date.setDate(dd);
+        date.setMonth(dm);
+        return date;
+
+      } else {
+         var dy=parseInt(day.YEAR[0]);
+         if (dy<100) dy+=2000;
+      }
+
+      date.setDate(dd);
+      date.setMonth(dm);
+      date.setFullYear(dy);
+
+
+    } else {
+
+      relday=relday[0];
+      // OK the day is relative, we need some calculation
+      var days=date.getDate();
+      var dayofweek=date.getDay();
+      if (relday=='domani') days+=1;
+      else if (relday=='dopodomani') days+=2;
+      else {
+        d=['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'].indexOf(relday);
+        var diff=d-dayofweek;
+        if (diff<1) diff+=7;
+        days+=diff;
+      }
+      date.setDate(days);
+
+   }
+
+
+   return date;
+
+  }
+
+
+
+
+function setCalendar(date,fullday,title) {
+  // Create a new context
+  Contents.create();
+  Contents.addInt('calendar_id',1);
+  Contents.addString('title',title);
+   if (fullday) {
+   // Due to an Android Calendar non-bug we need some modifications here
+    var d=new Date(date);
+    d.setUTCMilliseconds=0;
+    d.setUTCSeconds=0;
+    d.setUTCHours=0;
+    d.setUTCMinutes=0;
+    d.setUTCDate(date.getDate());
+    d.setUTCMonth(date.getMonth());
+    d.setUTCFullYear(date.getFullYear());
+    Contents.addLong('dtstart',d.getTime());
+    Contents.addLong('dtend',d.getTime()+1000 * 60 * 60 * 24); // Event Granularity
+    Contents.addString('eventTimezone','GMT');
+    Contents.addInt('allDay',1);
+ } else {
+    Contents.addLong('dtstart',date.getTime());
+    Contents.addLong('dtend',date.getTime()+1000 * 60 * 60); // Event Granularity
+    Contents.addString('eventTimezone',Talk.getDefaultTimezone());
+    Contents.addInt('allDay',0);
+  }
+
+  Contents.addInt('eventStatus',1); // Confirmed
+  Contents.addInt('hasAlarm',1); // Of course it has alarm
+  uid=Contents.set('content://com.android.calendar/events');
+
+  // And now put the ALARM
+  Contents.create();
+  Contents.addLong('event_id',uid);
+  Contents.addInt('minutes',-1);
+  Contents.addInt('method',1); // Alert
+  Contents.set('content://com.android.calendar/reminders');
+
+  answer='Avviso impostato per il '+date.getDate()+" ";
+  answer+=monthsVector[date.getMonth()]+" ";
+  answer+=date.getFullYear();
+
+  if (!fullday) {
+      answer+=' alle '+date.getHours()+" E "+date.getMinutes();
+  }
+
+  answer+="titolo : "+title;
+
+  setImage('happy');
+  Talk.say(answer,'exit()');
+
+}
+
+
+
+function action_calendar() {
+  var fullday=false;
+  title=vectToString(parsed.args.HOURDAY.WHAT);
+  if ( ! parsed.args.HOURDAY.DAY ) {
+    var h=getTime(parsed.args.HOURDAY.HOUR);
+    var date=new Date();
+    date.setMinutes(h[1]);
+    date.setHours(h[0]);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+  } else {
+    var date=getDate(parsed.args.HOURDAY.DAY);
+    if (!parsed.args.HOURDAY.HOUR) {
+     fullday=true;
+    } else {
+      var h=getTime(parsed.args.HOURDAY.HOUR);
+      date.setMinutes(h[1]);
+      date.setHours(h[0]);
+    }
+  }
+
+  setCalendar(date,fullday,title);
+
 }

@@ -33,7 +33,6 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.webkit.JavascriptInterface;
 
 import org.json.JSONArray;
@@ -143,7 +142,7 @@ public class LocationInterface implements LoquiturModules {
 
     /**
      * Get the current location
-     * @param gpsCallback
+     * @param callback
      * after the location has been taken calling back the location coordinates
      * example : Location.currentLocation('callThis');
      * after grabbed the location it calls "callThis(50.22213,0.523713,300)"

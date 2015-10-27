@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.Stack;
 
 import it.ms.theing.loquitur.functions.Brain;
+import it.ms.theing.loquitur.functions.ContentsInterface;
 import it.ms.theing.loquitur.functions.IntentInterface;
 import it.ms.theing.loquitur.functions.LocationInterface;
 import it.ms.theing.loquitur.functions.LoquiturModules;
@@ -95,6 +96,7 @@ public class Loquitur extends AppCompatActivity {
         addModule(new IntentInterface(this));
         addModule(new PhoneDir(this));
         addModule(new LocationInterface(this));
+        addModule(new ContentsInterface(this));
     }
 
 

@@ -47,6 +47,12 @@ Brain.sentence('HOUR ^\\d+|an#hourplus ^hour|hours ~ and ^\\d+#minuteplus ^minut
 Brain.sentence('HOUR ^\\d+|an#hourplus ^hour|hours');
 Brain.sentence('HOUR ^\\d+|a#minuteplus ^minute|minutes');
 
+// Days
+
+Brain.sentence('DAY ^(\\d+)\\w*#day ~ of ~ ^january|february|march|april|may|june|july|august|september|october|november|december#month ~ ^\\d+#year');
+Brain.sentence('DAY ^tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday#relday');
+
+
 // Wake up
 
 Brain.sentence('@ wake#action ... ^at|in HOUR');
@@ -61,6 +67,15 @@ Brain.sentence('@ modify#action ... ^alarm|alarms#what');
 
 Brain.sentence('@ search#action');
 Brain.sentence('@ internet#action');
+
+
+// Calendar
+
+Brain.sentence('@ remember#action HOURDAY');
+Brain.sentence('@ calendar#action HOURDAY');
+Brain.sentence('@ mark#action HOURDAY');
+Brain.sentence('HOURDAY ... DAY ~ HOUR ... ^that|to $what');
+Brain.sentence('HOURDAY ... DAY ~ HOUR ^that|to $what');
 
 
 // Run
@@ -128,7 +143,6 @@ function waiting_query() {
   parsed=JSON.parse(p);
 
 
-
   if (parsed.goal) {
 
     var action=parsed.args.ACTION;
@@ -177,6 +191,10 @@ function waiting_query() {
           action_location('action_where_callback');
           return;
     }
+   else if (['remember','calendar','mark'].indexOf(action)>-1) {
+              action_calendar();
+              return;
+   }
   }
 
   setImage('sorry');
@@ -473,4 +491,185 @@ function action_where_callback(lat,lon,alt) {
 
     Talk.say(s,"exit()");
     return;
+}
+
+
+
+
+var monthsVector=['january','february','march','april','may','june','july','august','september','october','november','december'];
+
+
+function getDate( day ) {
+
+  var date=new Date();
+
+  date.setMinutes(0);
+  date.setHours(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+
+
+  var relday=day.RELDAY;
+
+  if (!relday) {
+
+      // Explicit DATE
+      var dd=parseInt(day.DAY[1]) ;
+
+      if (!day.MONTH) {
+        // If you do not describe the month we intend the current month or the next
+        // if the day is less or equal to today and the current year
+
+        if (dd<=date.getDate()) {
+          // Next month
+          date.setMonth(date.getMonth()+1);
+        }
+        date.setDate(dd)
+        return date;
+
+      } else {
+        var dm=monthsVector.indexOf(day.MONTH[0]);
+      }
+
+      if (!(day.YEAR)) {
+         // If year is undefined we have to verify that the date is in the future
+         if ( date >= new Date(date.getFullYear(),dm,dd,0,0,0,0) ) {
+            // Ok date is in the past, refers to the next year
+            date.setFullYear(date.getFullYear()+1);
+         }
+        date.setDate(dd);
+        date.setMonth(dm);
+        return date;
+
+      } else {
+         var dy=parseInt(day.YEAR[0]);
+         if (dy<100) dy+=2000;
+      }
+
+      date.setDate(dd);
+      date.setMonth(dm);
+      date.setFullYear(dy);
+
+
+    } else {
+
+      relday=relday[0];
+      // OK the day is relative, we need some calculation
+      var days=date.getDate();
+      var dayofweek=date.getDay();
+      if (relday=='tomorrow') days+=1;
+      else {
+        d=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf(relday);
+        var diff=d-dayofweek;
+        if (diff<1) diff+=7;
+        days+=diff;
+      }
+      date.setDate(days);
+
+   }
+
+
+   return date;
+
+  }
+
+
+
+
+function setCalendar(date,fullday,title) {
+  // Create a new context
+  Contents.create();
+  Contents.addInt('calendar_id',1);
+  Contents.addString('title',title);
+   if (fullday) {
+   // Due to an Android Calendar non-bug we need some modifications here
+    var d=new Date(date);
+    d.setUTCMilliseconds=0;
+    d.setUTCSeconds=0;
+    d.setUTCHours=0;
+    d.setUTCMinutes=0;
+    d.setUTCDate(date.getDate());
+    d.setUTCMonth(date.getMonth());
+    d.setUTCFullYear(date.getFullYear());
+    Contents.addLong('dtstart',d.getTime());
+    Contents.addLong('dtend',d.getTime()+1000 * 60 * 60 * 24); // Event Granularity
+    Contents.addString('eventTimezone','GMT');
+    Contents.addInt('allDay',1);
+ } else {
+    Contents.addLong('dtstart',date.getTime());
+    Contents.addLong('dtend',date.getTime()+1000 * 60 * 60); // Event Granularity
+    Contents.addString('eventTimezone',Talk.getDefaultTimezone());
+    Contents.addInt('allDay',0);
+  }
+
+  Contents.addInt('eventStatus',1); // Confirmed
+  Contents.addInt('hasAlarm',1); // Of course it has alarm
+  uid=Contents.set('content://com.android.calendar/events');
+
+  // And now put the ALARM
+  Contents.create();
+  Contents.addLong('event_id',uid);
+  Contents.addInt('minutes',-1);
+  Contents.addInt('method',1); // Alert
+  Contents.set('content://com.android.calendar/reminders');
+
+  answer='notice set for the '+date.getDate()+" of ";
+  answer+=monthsVector[date.getMonth()]+" ";
+  answer+=date.getFullYear();
+
+  if (!fullday) {
+      var t=' at ';
+      var hr=date.getHours();
+      var min=date.getMinutes();
+      if (min>30) {
+        hr=(hr+1)%24;
+        min=60-min;
+        t+=min+" to ";
+      } else {
+        if (min!=0)
+          t+=min+" after ";
+      }
+
+
+      if (hr==0) t+="12 pm";
+      else if (hr==12) t+='12 am';
+      else if (hr>12) t+=(hr%12)+" pm";
+      else t+=hr+" am";
+      answer+=t;
+
+
+  }
+
+  answer+="title : "+title;
+
+  setImage('happy');
+  Talk.say(answer,'exit()');
+
+}
+
+
+
+function action_calendar() {
+  var fullday=false;
+  title=vectToString(parsed.args.HOURDAY.WHAT);
+  if ( ! parsed.args.HOURDAY.DAY ) {
+    var h=getTime(parsed.args.HOURDAY.HOUR);
+    var date=new Date();
+    date.setMinutes(h[1]);
+    date.setHours(h[0]);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+  } else {
+    var date=getDate(parsed.args.HOURDAY.DAY);
+    if (!parsed.args.HOURDAY.HOUR) {
+     fullday=true;
+    } else {
+      var h=getTime(parsed.args.HOURDAY.HOUR);
+      date.setMinutes(h[1]);
+      date.setHours(h[0]);
+    }
+  }
+
+  setCalendar(date,fullday,title);
+
 }
